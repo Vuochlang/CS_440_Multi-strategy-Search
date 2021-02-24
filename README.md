@@ -1,7 +1,7 @@
 # CS 440 - Artificial Intelligence
 
 <h2> Assignment 3:  </h2>
-<h3> AStar - A Multi-strategy search method for TicTacToe </h3>
+<h3> A Multi-strategy search method for TicTacToe </h3>
 
 02/23/2021
 
