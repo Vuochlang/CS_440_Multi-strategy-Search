@@ -125,3 +125,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.idea
+.json
+Makefile
+wsuv*
+README
+driver.sh
