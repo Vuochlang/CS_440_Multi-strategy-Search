@@ -31,10 +31,36 @@ Graded questions (answer these):
 -> Using the count_outcomes() with the empty board as the initial state,
     the return value is (46080, 131184, 77904). So the total end games that X win is 131184
 
+
 2. How early can X force a win assuming O plays randomly?
+
+-> Assuming we are at the current state 001002120:
+       |   | X
+    -----------
+       |   | O
+    -----------
+    X | O |
+-> By running the evaluation function with the state, we get
+        BB:(0, 1, 0), BR:(0, 4, 0), RB:(2, 5, 6), RR:(12, 45, 16)
+-> Thus, if X is one move away from winning and O plays randomly, X will most likely to win the game.
 
 
 3. How early can X force a win assuming O plays the best strategy?
+
+-> When the X player manages to get any two corners and O is not in the center as shown below,
+         |   |
+       -----------
+        O |   |
+       -----------
+         X |   | X
+-> O's next move will be in between those two X, then X can take the center which result in,
+           |   |
+        -----------
+        O | X |
+        -----------
+        X | O | X
+-> So, no matter which way O is going, X is guarantee a win.
+
 
 """
 
@@ -297,6 +323,7 @@ class MultiStrategySearch():
 
         output_list = []  # list to store outcomes/dictionary from each successor
 
+        # loop through each successor and append the output_list[] with the dictionary
         for each_successor in self.successors(tttnode):
             result = self.is_win(each_successor)
             if result:
@@ -315,6 +342,7 @@ class MultiStrategySearch():
             else:
                 output_list.append(self.evaluate_strategies(each_successor))
 
+        # loop through each item in the output_list[] and get update the strategy dictionary for the player
         return_dictionary = output_list[0].copy()
         for each in output_list[1:]:  # iterate from the second item
             return_dictionary['BB'] = bestchoice(return_dictionary['BB'], each['BB'], tttnode.nextplayer)
@@ -370,20 +398,20 @@ def bestchoice(t1, t2, whom):
     total_game1 = t1[player] + t1[opponent] + t1[0]
     total_game2 = t2[player] + t2[opponent] + t2[0]
 
-    # % wins of the player and opponent over total games played
+    # get the (% wins) of the player and opponent over total games played
     if total_game1 > 0:
         game_player1 = t1[player] / total_game1
         game_opp1 = t1[opponent] / total_game1
+        game_tie1 = t1[0] / total_game1
     else:
-        game_player1 = 0
-        game_opp1 = 0
+        game_player1 = game_opp1 = game_tie1 = 0
 
     if total_game2 > 0:
         game_player2 = t2[player] / total_game2
         game_opp2 = t2[opponent] / total_game2
+        game_tie2 = t2[0] / total_game2
     else:
-        game_player2 = 0
-        game_opp2 = 0
+        game_player2 = game_opp2 = game_tie2 = 0
 
     # best choice of the opponent that is least likely to win
     if game_opp1 < game_opp2:
@@ -401,16 +429,6 @@ def bestchoice(t1, t2, whom):
 
     # break ties and get the most stalemates
     else:
-        if total_game1 > 0:
-            game_tie1 = t1[0] / total_game1
-        else:
-            game_tie1 = 0
-
-        if total_game2 > 0:
-            game_tie2 = t2[0] / total_game2
-        else:
-            game_tie2 = 0
-
         if game_tie1 > game_tie2:
             return t1
         return t2
