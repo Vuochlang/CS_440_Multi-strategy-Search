@@ -395,8 +395,8 @@ def bestchoice(t1, t2, whom):
         player = 1
         opponent = 2
 
-    total_game1 = t1[player] + t1[opponent] + t1[0]
-    total_game2 = t2[player] + t2[opponent] + t2[0]
+    total_game1 = sum(list(t1))
+    total_game2 = sum(list(t2))
 
     # get the (% wins) of the player and opponent over total games played
     if total_game1 > 0:
