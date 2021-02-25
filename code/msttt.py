@@ -237,27 +237,23 @@ class MultiStrategySearch():
             completion.
         """
 
-        def possible_games(func_successor, func_is_win, tnode):
-            total_game = [0, 0, 0]
+        total_game = (0, 0, 0)
 
-            for node in func_successor(tnode):
-                # check the successor if it's the end game before recursively call the function again
-                result = func_is_win(node)
+        for node in self.successors(tttnode):
+            # check the successor if it's the end game before recursively call the function again
+            result = self.is_win(node)
 
-                if not result:  # not end game, result == False
-                    total_game = list(addtuples(tuple(total_game),
-                                                tuple(possible_games(func_successor, func_is_win, node))))
-                else:  # end game
-                    if result[2] == -1:  # increment the number according to the winner
-                        total_game[2] += 1
-                    elif result[2] == 1:
-                        total_game[1] += 1
-                    else:
-                        total_game[0] += 1
+            if not result:  # not end game, result == False
+                total_game = addtuples(total_game, tuple(self.count_outcomes(node)))
+            else:  # end game, increment the number according to the winner
+                if result[2] == -1:  # O
+                    total_game = addtuples(total_game, (0, 0, 1))
+                elif result[2] == 1:  # X
+                    total_game = addtuples(total_game, (0, 1, 0))
+                else:  # stalemate
+                    total_game = addtuples(total_game, (1, 0, 0))
 
-            return total_game
-
-        return tuple(possible_games(self.successors, self.is_win, tttnode))
+        return total_game
 
     def evaluate_strategies(self, tttnode, verbose=False):
         """ _ Part 5: Implement this method _ 
@@ -275,99 +271,60 @@ class MultiStrategySearch():
         Hint: this method may be easiest to implement recursively.
         """
 
-        def start_game(func_successor, func_is_win, tnode):
-            dictionary = {
-                # (ties, X-wins, O-wins)
-                'BB': (0, 0, 0),
-                'BR': (0, 0, 0),
-                'RB': (0, 0, 0),
-                'RR': (0, 0, 0)
-            }
+        if self.is_win(tttnode):  # when the given tttnode is already the end game, return with dictionary value
+            value = (1, 0, 0)  # stalemate
+            if tttnode.nextplayer * -1 == 1:  # X
+                value = (0, 1, 0)
+            elif tttnode.nextplayer * -1 == -1:  # O
+                value = (0, 0, 1)
+            return dict([('BB', value), ('BR', value), ('RB', value), ('RR', value)])
 
-            check = func_is_win(tnode)
-            if check:  # when the given tnode is already the end game, update dictionary and return
-                if tnode.nextplayer * -1 == 1:  # X's
-                    value = (0, 1, 0)
-                elif tnode.nextplayer * -1 == -1:
-                    value = (0, 0, 1)
+        return_dictionary = {  # (ties, X-wins, O-wins)
+            'BB': (0, 0, 0),
+            'BR': (0, 0, 0),
+            'RB': (0, 0, 0),
+            'RR': (0, 0, 0)
+        }
+
+        # default as X strategy
+        key_best = 'BR'
+        key_random = 'RB'
+        tuple_value = (0, 1, 0)
+        if tttnode.nextplayer == -1:
+            key_best = 'RB'
+            key_random = 'BR'
+            tuple_value = (0, 0, 1)
+
+        output_list = []  # list to store outcomes/dictionary from each successor
+
+        for each_successor in self.successors(tttnode):
+            result = self.is_win(each_successor)
+            if result:
+                if result[2] == 0:  # stalemate
+                    return_dictionary['BB'] = (1, 0, 0)
+                    return_dictionary[key_best] = (1, 0, 0)
+                    return_dictionary[key_random] = (1, 0, 0)
+                    return_dictionary['RR'] = (1, 0, 0)
                 else:
-                    value = (1, 0, 0)
-                dictionary['BB'] = value
-                dictionary['RB'] = value
-                dictionary['BR'] = value
-                dictionary['RR'] = value
-                return dictionary
+                    return_dictionary['BB'] = tuple_value
+                    return_dictionary[key_best] = tuple_value
+                    return_dictionary[key_random] = tuple_value
+                    return_dictionary['RR'] = tuple_value
+                output_list.append(return_dictionary)
 
-            total = 0
-            for i in tnode.board:  # loop to check if there's only one or more option available in the board
-                if i == 0:
-                    total += 1
-                if total > 1:
-                    break
+            else:
+                output_list.append(self.evaluate_strategies(each_successor))
 
-            first = True  # flag to indicate - first time modifying the dictionary for the given tnode
-            for each_node in func_successor(tnode):
-                check_end_game = func_is_win(each_node)
-                if check_end_game:  # if the successor is the end game
-                    new_value = (1, 0, 0)  # stalemate
-                    if check_end_game[2] == 1:
-                        new_value = (0, 1, 0)
-                    elif check_end_game[2] == -1:
-                        new_value = (0, 0, 1)
+        return_dictionary = output_list[0].copy()
+        for each in output_list[1:]:  # iterate from the second item
+            return_dictionary['BB'] = bestchoice(return_dictionary['BB'], each['BB'], tttnode.nextplayer)
+            return_dictionary[key_best] = bestchoice(return_dictionary[key_best], each[key_best], tttnode.nextplayer)
+            return_dictionary[key_random] = addtuples(return_dictionary[key_random], each[key_random])
+            return_dictionary['RR'] = addtuples(return_dictionary['RR'], each['RR'])
 
-                    # one option available from the tnode
-                    if total == 1 or first:
-                        dictionary['BB'] = addtuples(dictionary['BB'], new_value)
-                        dictionary['BR'] = addtuples(dictionary['BR'], new_value)
-                        dictionary['RB'] = addtuples(dictionary['RB'], new_value)
-                        dictionary['RR'] = addtuples(dictionary['RR'], new_value)
-                        first = False
-                        if total == 1:
-                            return dictionary
-
-                    # more than one option
-                    else:
-                        first = False
-
-                        # compare and get the best strategy, and update the random strategy for the player
-                        dictionary['BB'] = bestchoice(dictionary['BB'], new_value, tnode.nextplayer)
-                        if tnode.nextplayer == 1:
-                            dictionary['BR'] = bestchoice(dictionary['BR'], new_value, tnode.nextplayer)
-                            dictionary['RB'] = addtuples(dictionary['RB'], new_value)
-                        elif tnode.nextplayer == -1:
-                            dictionary['RB'] = bestchoice(dictionary['RB'], new_value, tnode.nextplayer)
-                            dictionary['BR'] = addtuples(dictionary['BR'], new_value)
-                        dictionary['RR'] = addtuples(dictionary['RR'], new_value)
-
-                else:  # successor is not the end game
-                    new_dict = start_game(func_successor, func_is_win, each_node)  # recursive call the current function
-
-                    # update the tuple for each strategy as needed
-                    if first:
-                        dictionary['BB'] = addtuples(dictionary['BB'], new_dict['BB'])
-                        dictionary['BR'] = addtuples(dictionary['BR'], new_dict['BR'])
-                        dictionary['RB'] = addtuples(dictionary['RB'], new_dict['RB'])
-                        dictionary['RR'] = addtuples(dictionary['RR'], new_dict['RR'])
-                        first = False
-
-                    else:
-                        dictionary['BB'] = bestchoice(dictionary['BB'], new_dict['BB'], tnode.nextplayer)
-
-                        if tnode.nextplayer == 1:
-                            dictionary['BR'] = bestchoice(dictionary['BR'], new_dict['BR'], tnode.nextplayer)
-                            dictionary['RB'] = addtuples(dictionary['RB'], new_dict['RB'])
-
-                        elif tnode.nextplayer == -1:
-                            dictionary['RB'] = bestchoice(dictionary['RB'], new_dict['RB'], tnode.nextplayer)
-                            dictionary['BR'] = addtuples(dictionary['BR'], new_dict['BR'])
-
-                        dictionary['RR'] = addtuples(dictionary['RR'], new_dict['RR'])
-            return dictionary
-
-        result = start_game(self.successors, self.is_win, tttnode)
         if verbose:
-            print(result)
-        return result
+            print(return_dictionary)
+        return return_dictionary
 
 
 def addtuples(t1, t2):
